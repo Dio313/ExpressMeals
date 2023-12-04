@@ -1,0 +1,6 @@
+@ExpressMeals.WebServer_HostAddress = http://localhost:5107
+
+GET {{ExpressMeals.WebServer_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

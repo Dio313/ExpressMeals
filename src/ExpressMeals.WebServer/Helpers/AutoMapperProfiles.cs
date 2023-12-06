@@ -2,6 +2,7 @@ using AutoMapper;
 using ExpressMeals.Contracts.ViewModels;
 using ExpressMeals.Domains.Entities;
 using ExpressMeals.Infrastructures.Identities;
+using ExpressMeals.WebServer.Dto;
 
 namespace ExpressMeals.WebServer.Helpers
 {
@@ -18,11 +19,11 @@ namespace ExpressMeals.WebServer.Helpers
 
             CreateMap<ApplicationUser, UserVm>().ReverseMap();
 
-            //CreateMap<OrderCreateVm, Order>().ReverseMap();
+            CreateMap<OrderCreateVm, Order>().ReverseMap();
 
-            //CreateMap<OrderDetail, OrderDetailVm>().ReverseMap();
+            CreateMap<OrderDetail, OrderDetailVm>().ReverseMap();
 
-            //CreateMap<OrderVm, OrderDto>().ReverseMap();
+            CreateMap<OrderVm, OrderDto>().ReverseMap();
         }
     }
 }

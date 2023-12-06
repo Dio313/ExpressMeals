@@ -1,0 +1,157 @@
+﻿@page "/cart"
+@using global::Contracts.Constants
+@inject IApiService _service
+@inject ICartService _cartService
+@inject ILocalStorageService _localStorage
+
+
+
+@if (IsProcessing)
+{
+	<div style="position:fixed;top:50%;left:50%;margin-top:-50px;margin-left:-100px;">
+		<img src="images/ajax-loader.gif" />
+	</div>
+}
+else
+{
+	@if (!ShoppingCart.Any())
+	{
+		<RedirectHome></RedirectHome>
+	}
+	else
+	{
+		<div class="container mt-4">
+			<div class="card">
+				<div class="card-header bg-dark text-light ml-0 ">
+					<div class="row">
+						<div class="col-6  pt-2">
+							Shopping Cart
+						</div>
+						<div class="col-6 col-md-3 offset-md-3 text-end">
+							<NavLink href="/meals/page/1" class="btn btn-outline-info form-control">Continue Shopping</NavLink>
+						</div>
+					</div>
+				</div>
+				<div class="card-body">
+
+					@foreach (var item in ShoppingCart)
+					{
+
+						<div class="row">
+							<div class="col-3 col-md-1 text-center py-2">
+								<img src="@item.Meal.ImageUrl" class="rounded" />
+							</div>
+							<div class="col-9 text-sm-center text-md-start col-md-4 pt-lg-1 ">
+
+								<div class="badge bg-primary text-center" style="font-size:12px;">
+									@item.Meal.CategoryName
+								</div>
+
+								<h4><strong>@item.Meal.Name</strong></h4>
+							</div>
+							<div class="col-12 text-sm-center col-md-7 text-md-start row  pt-lg-3 mt-3">
+								<div class="col-4 pt-1 ">
+
+									<h6><strong>@item.Meal.Price.ToString("c") <span class="text-muted">x</span> @item.Count </strong></h6>
+								</div>
+								<div class="col-6 col-sm-4 col-lg-6">
+									<div class="count-input-btns">
+										<button @onclick="() => Increment(item.MealId, 1)" type="submit" class="inc-ammount count-btn  ">
+											<i class="zmdi zmdi-hc-3x zmdi-chevron-up"></i>
+										</button>
+										&nbsp;
+										<button @onclick="() => Decrement(item.MealId, 1)" type="submit" class="dec-ammount count-btn">
+											<i class="zmdi zmdi-hc-3x zmdi-chevron-down"></i>
+										</button>
+									</div>
+
+								</div>
+								<div class="col-2 col-sm-4 col-lg-2 text-right">
+									<button @onclick="()=>Decrement(item.MealId,0)" type="submit" class="pro-remove">
+										<i class="far fa-2x fa-trash-alt"></i>
+									</button>
+								</div>
+							</div>
+						</div>
+					}
+					<hr />
+
+					<div class="row">
+						<div class="col-12 col-md-5">
+						</div>
+						<div class="col-12 col-md-6 offset-md-1 col-lg-4 offset-lg-3 pr-4">
+							<ul class="list-group">
+								<li class="list-group-item d-flex justify-content-between bg-light">
+									<span class="text-info"> Total (USD)</span>
+									<strong class="text-info">@OrderTotal.ToString("c")</strong>
+								</li>
+							</ul>
+						</div>
+					</div>
+
+
+				</div>
+				<div class="card-footer">
+					<div class="col-12  col-md-3 offset-md-9">
+						<a href="/summary" class="btn btn-secondary form-control">Summary</a>
+					</div>
+				</div>
+			</div>
+		</div>
+	}
+
+}
+
+@code {
+	[Parameter] public int MealId { get; set; }
+	public bool IsProcessing { get; set; } = false;
+	private List<ShoppingCart> ShoppingCart = new ();
+	private List<MealVm> Meals { get; set; }
+	private double OrderTotal { get; set; } = 0;
+
+	protected override async Task OnInitializedAsync()
+	{
+		IsProcessing = true;
+
+		Meals = await _service.GetAllMeals();
+		await LoadCart();
+		IsProcessing = false;
+	}
+
+	private async Task LoadCart()
+	{
+		OrderTotal = 0;
+		ShoppingCart = await _localStorage.GetItemAsync<List<ShoppingCart>>(Constant.ShoppingCart);
+		foreach (var cart in ShoppingCart)
+		{
+			cart.Meal = Meals.FirstOrDefault(u => u.Id == cart.MealId);
+			if (cart.Meal != null) OrderTotal += cart.Meal.Price * cart.Count;
+		}
+	}
+
+	private async Task Increment(int productId,  int count)
+	{
+		IsProcessing = true;
+		await _cartService.IncrementCart(new()
+		{
+			Count = count,
+			MealId = productId
+		});
+
+		await LoadCart();
+		IsProcessing = false;
+	}
+
+	private async Task Decrement(int productId, int count)
+	{
+		IsProcessing = true;
+		await _cartService.DecrementCart(new()
+		{
+			Count = count,
+			MealId = productId
+		});
+
+		await LoadCart();
+		IsProcessing = false;
+	}
+}

@@ -12,7 +12,7 @@ namespace ExpressMeals.WebServer.Helpers
             CreateMap<Category, CategoryVm>().ReverseMap();
 
             CreateMap<Meal, MealVm>()
-                .ForMember(dest => dest.Category, opt => opt.MapFrom(src => src.Category.Name));
+                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category.Name));
 
             CreateMap<MealVm, Meal>().ReverseMap();
 

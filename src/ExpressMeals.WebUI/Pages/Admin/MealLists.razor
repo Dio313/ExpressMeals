@@ -1,0 +1,432 @@
+﻿@page "/admin/meallists"
+@inject IApiService _service
+@inject IJSRuntime _jsRuntime
+
+
+<div class="inner-page-sec-padding-bottom space-db--30">
+    <div class="container">
+
+        <h3>Admin Meals</h3>
+        <div class="row mb-2">
+            <div class="col-md-8">
+                <button class="btn btn-mid btn-secondary" type="button" @onclick='@(_ => AddModal("ModalA"))'>
+                    <span class="zmdi zmdi-plus"></span> &nbsp; Meal
+                </button>
+            </div>
+
+            <div class="col-md-4 text-md-right"></div>
+        </div>
+
+
+        <div class="col-sm-12 col-md-12 col-lg-12">
+            @if (meal == null)
+            {
+                <p><em>Loading...</em></p>
+            }
+            else
+            {
+                <div class="form-group">
+                    <input class="form-control" type="text" placeholder="Filter Meals ......."
+                    @bind="Filter"
+                    @bind:event="oninput">
+                </div>
+                <div class="cart-table table-responsive table-striped mb--40">
+                    <table class="table">
+                        <thead>
+                            <tr>
+
+                                <th class="pro-thumbnail">Image</th>
+                                <th class="pro-title">Name</th>
+                                <th class="pro-price">Price</th>
+                                <th class="pro-title">Category</th>
+                                <th class="pro-remove">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in meal.Where(x => IsVisible(x)))
+                            {
+                                <tr>
+                                    <td class="pro-thumbnail">
+                                        <img src="@item.ImageUrl" alt="@item.Name" />
+                                    </td>
+                                    <td class="pro-title">@item.Name</td>
+                                    <td class="pro-price">@item.Price.ToString("C")</td>
+                                    <td class="pro-title">@item.CategoryName</td>
+
+                                    <td class="pro-remove">
+
+                                        <button class="btn btn-warning btn-mid" type="button" @onclick='@(_ => EditModal("ModalB", item.Id))'>
+                                            <span class="zmdi zmdi-edit"></span> &nbsp; Edit
+                                        </button>
+                                        |
+                                        <button class="btn btn-danger btn-mid" type="button" @onclick='@(_ => OpenDeleteModal("deleteConfirmation", item.Id))'>
+                                            <span class="zmdi zmdi-delete"></span> &nbsp; Delete
+                                        </button>
+
+                                    </td>
+
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+
+        <div>
+            <div class="modal fade" id="ModalA" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog modal-lg" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Add Meal</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+
+                            @if (ShowErrors)
+                            {
+                                <div class="alert alert-danger" role="alert">
+                                    <p>@Error</p>
+                                </div>
+                            }
+
+                            <EditForm Model="MealModel" OnValidSubmit='_ => AddMeal("ModalA")'>
+
+                                <DataAnnotationsValidator />
+
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">Name</label>
+                                    <div class="col-sm-6">
+                                        <InputText @bind-Value="@MealModel.Name" class="form-control" />
+                                        <ValidationMessage For="@(() => MealModel.Name)" />
+                                    </div>
+                                </div>
+
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">Category</label>
+                                    <div class="col-sm-6">
+                                        <CustomInputSelect @bind-Value="MealModel.CategoryId" class="form-control">
+                                            <option>Select Category</option>
+                                            @foreach (var dept in categories)
+                                            {
+                                                <option value="@dept.Id">@dept.Name</option>
+                                            }
+                                        </CustomInputSelect>
+                                        <ValidationMessage For="@(() => MealModel.CategoryId)" />
+                                    </div>
+                                </div>
+
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">Price</label>
+                                    <div class="col-sm-6">
+                                        <InputNumber @bind-Value="@MealModel.Price" class="form-control" />
+                                        <ValidationMessage For="@(() => MealModel.Price)" />
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">Description</label>
+                                    <div class="col-sm-6">
+                                        <InputTextArea @bind-Value="@MealModel.Description" class="form-control" row="5" />
+                                        <ValidationMessage For="@(() => MealModel.Description)" />
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">Main Picture</label>
+
+                                    <div class="col-sm-6">
+                                        <InputImage OnSelectedImage="PictureSelected" ImageUrl="@imageURL" />
+                                        <ValidationMessage For="@(() => MealModel.ImageUrl)" />
+                                    </div>
+
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label"></label>
+                                    <div class="col-sm-9">
+                                        <button type="button" class="btn btn-mid btn-secondary" data-dismiss="modal">
+                                            <span class="zmdi zmdi-close"></span>&nbsp; Close
+                                        </button>
+                                        &nbsp;&nbsp;
+                                        <button type="submit" class="btn btn-mid btn-success ">
+                                            <span class="zmdi zmdi-mail-send"></span>&nbsp; Save
+                                        </button>
+                                    </div>
+                                </div>
+
+                            </EditForm>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div>
+            <div class="modal fade" id="ModalB" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Edit <b>@MealModel.Name</b> </h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+
+                            @if (ShowErrors)
+                            {
+                                <div class="alert alert-danger" role="alert">
+                                    <p>@Error</p>
+                                </div>
+                            }
+
+                            <EditForm Model="MealModel" OnValidSubmit='_ => EditMeal("ModalB")'>
+
+                                <DataAnnotationsValidator />
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">Name</label>
+                                    <div class="col-sm-6">
+                                        <InputText @bind-Value="@MealModel.Name" class="form-control" />
+                                        <ValidationMessage For="@(() => MealModel.Name)" />
+                                    </div>
+                                </div>
+
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">Category</label>
+                                    <div class="col-sm-6">
+                                        <CustomInputSelect @bind-Value="MealModel.CategoryId" class="form-control">
+                                            <option>Select Category</option>
+                                            @foreach (var dept in categories)
+                                            {
+                                                <option value="@dept.Id">@dept.Name</option>
+                                            }
+                                        </CustomInputSelect>
+                                        <ValidationMessage For="@(() => MealModel.CategoryId)" />
+                                    </div>
+                                </div>
+
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">Price</label>
+                                    <div class="col-sm-6">
+                                        <InputNumber @bind-Value="@MealModel.Price" class="form-control" />
+                                        <ValidationMessage For="@(() => MealModel.Price)" />
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">Description</label>
+                                    <div class="col-sm-6">
+                                        <InputTextArea @bind-Value="@MealModel.Description" class="form-control" row="5" />
+                                        <ValidationMessage For="@(() => MealModel.Description)" />
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">Main Picture</label>
+
+                                    <div class="col-sm-6">
+                                        <InputImage OnSelectedImage="PictureSelected" ImageUrl="@imageURL" />
+                                        <ValidationMessage For="@(() => MealModel.ImageUrl)" />
+                                    </div>
+
+                                </div>
+
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label"></label>
+                                    <div class="col-sm-9">
+                                        <button type="button" class="btn btn-mid btn-secondary" data-dismiss="modal">
+                                            <span class="zmdi zmdi-close"></span>&nbsp; Close
+                                        </button>
+                                        &nbsp;&nbsp;
+                                        <button type="submit" class="btn btn-mid btn-success ">
+                                            <span class="zmdi zmdi-mail-send"></span>&nbsp; Update
+                                        </button>
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <div class="modal fade" id="deleteConfirmation" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h6 class="modal-title">Are You Sure You Want To Delete <span class="text-danger">@MealModel.Name</span> ?</h6>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-mid btn-secondary" data-dismiss="modal">
+                            <span class="zmdi zmdi-close"></span>
+                        </button>
+                        &nbsp;&nbsp;
+                        <button type="button" class="btn btn-mid btn-success" @onclick='@(_ => ConfirmDelete("deleteConfirmation"))'>
+                            <span class="zmdi zmdi-mail-send"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+
+</div>
+
+@code
+{
+    [Parameter] public int MealId { get; set; }
+
+    string imageURL;
+
+    private bool ShowErrors;
+
+    private string Error = "";
+
+    List<MealVm> meal;
+
+    public string Filter { get; set; }
+
+    MealVm MealModel = new();
+
+    public List<CategoryVm> categories { get; set; } = new();
+
+
+    private void PictureSelected(string imageBase64)
+    {
+        MealModel.ImageUrl = imageBase64;
+        imageURL = null;
+        Console.WriteLine(imageBase64);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        meal = await _service.GetAllMeals();
+    }
+
+    public bool IsVisible(MealVm item)
+    {
+        if (string.IsNullOrEmpty(Filter))
+            return true;
+
+        if (item.Name.Contains(Filter, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (item.Name.ToString().StartsWith(Filter) || item.Name.ToString().StartsWith(Filter))
+            return true;
+
+        return false;
+    }
+
+    public async Task AddModal(string modalId)
+    {
+        MealModel = new();
+
+        categories = await _service.GetAllCategories();
+
+        if (!string.IsNullOrEmpty(MealModel.ImageUrl))
+        {
+            imageURL = MealModel.ImageUrl;
+            MealModel.ImageUrl = null;
+        }
+
+        await _jsRuntime.InvokeVoidAsync("global.openModal", modalId);
+    }
+
+    public async Task EditModal(string modalId, int itemId)
+    {
+
+        MealModel = await _service.GetMeal(itemId);
+
+        MealId = itemId;
+
+        categories = await _service.GetAllCategories();
+
+        if (!string.IsNullOrEmpty(MealModel.ImageUrl))
+        {
+            imageURL = MealModel.ImageUrl;
+            MealModel.ImageUrl = null;
+        }
+        await _jsRuntime.InvokeVoidAsync("global.openModal", modalId);
+    }
+
+
+    public async Task AddMeal(string modalId)
+    {
+        ShowErrors = false;
+
+        var result = await _service.CreateMeal(MealModel);
+
+        if (result.IsSuccess)
+        {
+            await _jsRuntime.InvokeAsync<object>("global.closeModal", modalId);
+            await OnInitializedAsync();
+        }
+        else
+        {
+            foreach (var message in result.ErrorMessages)
+            {
+                ShowErrors = true;
+                Error = message;
+            }
+        }
+    }
+
+    public async Task EditMeal(string modalId)
+    {
+        ShowErrors = false;
+
+        var result = await _service.UpdateMeal(MealModel);
+        if (result.IsSuccess)
+        {
+            await _jsRuntime.InvokeAsync<object>("global.closeModal", modalId);
+            await OnInitializedAsync();
+        }
+        else
+        {
+            foreach (var message in result.ErrorMessages)
+            {
+                ShowErrors = true;
+                Error = message;
+            }
+        }
+    }
+
+    public async Task CloseModal(string modalId)
+    {
+        await _jsRuntime.InvokeAsync<object>("global.closeModal", modalId);
+    }
+
+    public async Task OpenDeleteModal(string modalId, int itemId)
+    {
+        MealModel = await _service.GetMeal(itemId);
+        MealId = itemId;
+        await _jsRuntime.InvokeVoidAsync("global.openModal", modalId);
+    }
+    public async Task ConfirmDelete(string modalId)
+    {
+        await _service.DeleteMeal(MealId);
+        await _jsRuntime.InvokeAsync<object>("global.closeModal", modalId);
+        await OnInitializedAsync();
+    }
+}

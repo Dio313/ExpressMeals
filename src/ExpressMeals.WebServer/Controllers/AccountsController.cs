@@ -1,4 +1,5 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -38,75 +39,72 @@ namespace ExpressMeals.WebServer.Controllers
 
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterVm model)
+        public async Task<ApiResponse<RegisterVm>> RegisterAsync(RegisterVm request)
         {
-            var existingUser = await _userManager.FindByEmailAsync(model.Email);
+            var existingUser = await _userManager.FindByEmailAsync(request.Email);
             if (existingUser != null)
             {
-                return new BadRequestObjectResult(new ApiValidationError {Errors = new[] {$"Email: {model.Email} already exists, please choose another email"}});
+                throw  new DuplicateException($"Email: {request.Email} already exists, please choose another email", HttpStatusCode.Conflict);
             }
-
-            if (model.Password != model.ConfirmPassword)
+            if (request.Password != request.ConfirmPassword)
             {
-                return new BadRequestObjectResult(new ApiValidationError {Errors = new[] {"Password and confirm password do not match"}});
+               throw new ForbiddenException("Password and confirm password do not match");
             }
-
             var user = new ApplicationUser
             {
-                UserName = model.Email,
-                Email = model.Email,
-                FirstName = model.FirstName,
-                LastName = model.LastName,
-                EmailConfirmed = true // product environ disable
+                UserName = request.Email,
+                Email = request.Email,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                EmailConfirmed = true // in production change to false
             };
 
-            var result = await _userManager.CreateAsync(user, model.Password);
+            var result = await _userManager.CreateAsync(user, request.Password);
 
             if (result.Succeeded)
             {
-                var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                var urlConfirmation = $"{_httpContextAccessor.HttpContext!.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}/accounts/emailconfirmation/?userid={HttpUtility.UrlEncode(user.Id)}&code={HttpUtility.UrlEncode(code)}";
-                await _emailSender.SendMail(user.Email, "Email confirmation", $"Please confirm your account by <a href='{urlConfirmation}'>clicking here</a>");
+                //var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                //var urlConfirmation = $"{_httpContextAccessor.HttpContext!.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}/accounts/emailconfirmation/?userid={HttpUtility.UrlEncode(user.Id)}&code={HttpUtility.UrlEncode(code)}";
+                //await _emailSender.SendMail(user.Email, "Email confirmation", $"Please confirm your account by <a href='{urlConfirmation}'>clicking here</a>");
 
                 await _userManager.AddToRoleAsync(user, RoleConstants.UserRole);
             }
             else
             {
-                return BadRequest(new ApiResponse(false, result.Errors.Select(a => a.Description.ToString()).ToList()));
+                return new ApiResponse<RegisterVm>(false, result.Errors.Select(a => a.Description.ToString()).ToList(),
+                    request);
             }
 
-            return Ok(result);
+            return new ApiResponse<RegisterVm>(true, null, new RegisterVm());
         }
 
-
         [HttpPost("emailConfirmation")]
-        public async Task<IActionResult> EmailConfirmation(EmailConfirmationVm confirmationRequest)
+        public async Task<ApiResponse<bool>> EmailConfirmation( EmailConfirmationVm confirmationRequest)
         {
             var user = await _userManager.FindByIdAsync(confirmationRequest.UserId);
             if (user == null)
             {
-                return new BadRequestObjectResult(new ApiValidationError {Errors = new[] {"User not found"}});
+                throw new ArgumentNullException(nameof(user), "User not found");
             }
             var result = await _userManager.ConfirmEmailAsync(user, confirmationRequest.Code);
-            return Ok(result);
+            return new ApiResponse<bool>(true, null, result.Succeeded);
         }
 
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginVm model)
+        public async Task<ApiResponse<LoginResponse>> LoginAsync(LoginVm request)
         {
-            var user = await _userManager.FindByEmailAsync(model.Email);
-
+            var user = await _userManager.FindByEmailAsync(request.Email);
             if (user == null)
             {
-                return Unauthorized(new ApiResponse(false, new List<string>(){"User not found"}));
-            }
-            var passwordValid = await _userManager.CheckPasswordAsync(user, model.Password);
-            if (!passwordValid)
-            {
-                return Unauthorized(new ApiResponse(false, new List<string>(){"Invalid Credentials."}));
+                throw new AuthenticationException ( "User not found", HttpStatusCode.Unauthorized);
             }
 
+            var passwordValid = await _userManager.CheckPasswordAsync(user, request.Password);
+            if (!passwordValid)
+            {
+                throw new AuthenticationException("Invalid Credentials.", HttpStatusCode.Unauthorized);
+            }
             user.RefreshToken = GenerateRefreshToken();
             user.RefreshTokenExpiryTime = DateTime.Now.AddDays(7);
             await _userManager.UpdateAsync(user);
@@ -115,24 +113,24 @@ namespace ExpressMeals.WebServer.Controllers
         
             var response = new LoginResponse { AccessToken = token, RefreshToken = user.RefreshToken};
 
-            return Ok(response);
+            return new ApiResponse<LoginResponse>(true, null, response);
         }
 
         [HttpPost("refresh")]
-        public async Task<IActionResult> RefreshToken(LoginResponse model)
+        public async Task<ApiResponse<LoginResponse>> GetRefreshTokenAsync(LoginResponse request)
         {
-            ClaimsPrincipal principal = GetPrincipalFromExpiredToken(model.AccessToken);
+            ClaimsPrincipal principal = GetPrincipalFromExpiredToken(request.AccessToken);
 
             var user = await _userManager.FindByNameAsync(principal.Identity?.Name!);
 
             if (user is null)
             {
-                return Unauthorized(new ApiResponse(false, new List<string>(){"User not found"}));
+                throw new AuthenticationException ( "User not found", HttpStatusCode.Unauthorized);
             }
         
-            if (user.RefreshToken != model.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.Now)
+            if (user.RefreshToken != request.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.Now)
             {
-                return Unauthorized(new ApiResponse(false, new List<string>(){"Invalid Credentials."}));
+                throw new AuthenticationException("Invalid Credentials.", HttpStatusCode.Unauthorized);
             }
 
             var token = GenerateEncryptedToken(GetSigningCredentials(), await GetClaimsAsync(user));
@@ -141,49 +139,54 @@ namespace ExpressMeals.WebServer.Controllers
 
             var response = new LoginResponse() { AccessToken = token, RefreshToken = user.RefreshToken};
 
-            return Ok(response);
+            return new ApiResponse<LoginResponse>(true, null, response);
         }
 
         [HttpGet("user/logged")]
         [Authorize]
-        public async Task<IActionResult> GetLoggedUser(ClaimsPrincipal user)
+        public async Task<ApiResponse<UserVm>> GetLoggedUserInfo(ClaimsPrincipal user)
         {
             var userInDb = await _userManager.FindByNameAsync(user.Identity!.Name!);
             if (userInDb is null)
             {
-                return Unauthorized(new ApiResponse(false, new List<string>(){"User not found"}));
+                throw new AuthenticationException ( "User not found", HttpStatusCode.Unauthorized);
             }
 
             var userDto = _mapper.Map<UserVm>(userInDb);
 
-            return Ok(userDto);
+            return new ApiResponse<UserVm>(true, null, userDto);
         }
+
         [HttpPost("ForgotPassword")]
-        public async Task<IActionResult> ForgotPassword(ForgotPasswordVm forgotPasswordRequest)
+        public async Task<ApiResponse<ForgotPasswordVm>> ForgotPassword(ForgotPasswordVm forgotPasswordRequest)
         {
             var user = await _userManager.FindByEmailAsync(forgotPasswordRequest.Email);
             if (user == null || !(await _userManager.IsEmailConfirmedAsync(user)))
             {
-                return Unauthorized(new ApiResponse(false, new List<string>(){"User not found"}));
+                throw new AuthenticationException ( "User not found", HttpStatusCode.Unauthorized);
             }
             var code = await _userManager.GeneratePasswordResetTokenAsync(user);
             var urlConfirmation = $"{_httpContextAccessor.HttpContext!.Request.Scheme}://{_httpContextAccessor.HttpContext.Request.Host}/account/changepassword/?code={HttpUtility.UrlEncode(code)}";
             await _emailSender.SendMail(user.Email, "Reset password", $"Please reset your password by <a href='{urlConfirmation}'>clicking here</a>");
-            return Ok();
+            return new ApiResponse<ForgotPasswordVm>(true, null, new ForgotPasswordVm());
         }
 
+
         [HttpPost("changePassword")]
-        public async Task<IActionResult> ChangePassword([FromBody]ChangePasswordVm changePassword,[FromRoute] ClaimsPrincipal user)
+        public async Task<ApiResponse<IdentityResult>> ChangePasswordAsync([FromBody]ChangePasswordVm changePassword, [FromRoute] ClaimsPrincipal user)
         {
             var userInDb = await _userManager.FindByNameAsync(user.Identity!.Name!);
             if (userInDb is null)
             {
-                return Unauthorized(new ApiResponse(false, new List<string>(){"User not found"}));
+                throw new AuthenticationException ( "User not found", HttpStatusCode.Unauthorized);
             }
             var result = await _userManager.ChangePasswordAsync(userInDb,changePassword.OldPassword,changePassword.NewPassword);
 
-            return Ok(result);
+            return new ApiResponse<IdentityResult>(true, null, result);
         }
+
+
+
 
         #region helpers
 

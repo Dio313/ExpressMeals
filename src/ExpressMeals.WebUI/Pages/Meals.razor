@@ -1,0 +1,237 @@
+﻿@page "/meals/page/{Page:int}"
+@page "/meals/search/{SearchQuery}/page/{Page:int}"
+@page "/meals/category/{CategoryName}/{CategoryId:int}"
+@page "/meals/category/{CategoryName}/{CategoryId:int}/page/{Page:int}"
+@page "/meals/category/{CategoryName}/{CategoryId:int}/search/{SearchQuery}/page/{Page:int}"
+@inject IJSRuntime _jsRuntime
+@inject IApiService _service
+@inject ICartService _cartService
+
+
+
+<section class="section-margin">
+    <div class="container">
+        <div class="promo-section-heading">
+            <h2>All Meals</h2>
+        </div>
+
+        @if (products == null)
+        {
+            <p>
+                <em>Loading...</em>
+            </p>
+        }
+        else
+        {
+            <div class="shop-product-wrap grid with-pagination row space-db--30 shop-border">
+                @foreach (var item in products)
+                {
+                    <div class="col-lg-3 col-sm-6">
+
+                        <div class="product-card">
+                            <div class="product-grid-content">
+                                <div class="product-header">
+                                    <h6>
+                                        <span>@item.Name</span>
+                                    </h6>
+                                </div>
+                                <div class="product-card--body">
+                                    <div class="card-image">
+                                        <img src="@item.ImageUrl" alt="">
+                                        <div class="hover-contents">
+                                            <span class="hover-image">
+                                                <img src="@item.ImageUrl" alt="">
+                                            </span>
+                                            <div class="hover-btns">
+                                                <a @onclick='@(_ => OrderModal("ModalOrder", item.Id))' class="single-btn">
+                                                    <i class="fas fa-cart-plus"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="price-block">
+                                        <span class="price">@item.Price.ToString("C")</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+
+                    </div>
+                }
+
+            </div>
+        }
+
+        <!-- Pagination Block -->
+        <div class="row pt--60">
+            <div class="col-md-12 text-center">
+                <Pagination PageIndex=@_paginatedList.PageIndex TotalPages=@_paginatedList.TotalPages OnClick="PageIndexChanged"
+                            HasNextPage=@_paginatedList.HasNextPage HasPreviousPage=@_paginatedList.HasPreviousPage>
+                </Pagination>
+            </div>
+        </div>
+        
+
+
+    </div>
+</section>
+
+
+<section>
+    <div class="modal fade" id="ModalOrder" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@MealModel.Name </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="Details" OnValidSubmit='_ => AddToCart("ModalOrder")' method="post">
+
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <img src="@MealModel.ImageUrl" />
+                            </div>
+
+                            <div class="col-lg-6">
+                                <div class="product-details-info">
+                                    <h3 class="product-title">@MealModel.Name</h3>
+                                    <p class="product-details-info">@MealModel.Description</p>
+                                    <div class="price-block">
+                                        <span class="price-new">@MealModel.Price.ToString("C")</span>
+                                        <del class="price-old"></del>
+                                    </div>
+
+                                    <div class="add-to-cart-row">
+                                        <div class="count-input-block">
+                                            <span class="widget-label">Qty</span>
+                                            <div class="count-input-btns">
+                                                <InputNumber @bind-Value="Details.Count" class="inc-ammount count-btn form-control" />
+                                                <ValidationMessage For="()=>Details.Count"></ValidationMessage>
+                                            </div>
+                                        </div>
+                                        <div class="add-cart-btn pt-2">
+                                            <button type="submit" value="Add to Cart" class="btn btn-rounded btn-outlined--primary">
+                                                <span class="plus-icon">+</span>
+                                                Add to Cart
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </EditForm>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+
+    [Parameter] 
+    public int MealId { get; set; }
+
+	[Parameter]
+    public int? CategoryId { get; set; }
+
+	[Parameter]
+	public string SearchQuery { get; set; }
+
+	[Parameter]
+	public int? Page { get; set; } = 1;
+
+	[Parameter]
+	public string CategoryName { get; set; }
+
+
+    PaginatedList<MealVm> _paginatedList = new();
+
+    public List<MealVm> products { get; set; } = new();
+
+	private IEnumerable<CategoryVm> categories;
+
+    public MealVm MealModel = new();
+
+    public DetailsVm Details { get; set; } = new();
+
+	
+	protected override async Task OnInitializedAsync()
+	{
+		await GetAllProducts();
+	}
+
+	protected override async Task OnParametersSetAsync()
+	{
+		await GetAllProducts(withCategories: false);
+	}
+
+	private async Task SelectedPage(int page)
+	{
+		Page = page;
+
+		await GetAllProducts(withCategories: false);
+	}
+
+	private async Task GetAllProducts(bool withCategories = true)
+	{
+		if (Page == 0)
+		{
+			Page = 1;
+		}
+
+		CategoryId = CategoryId;
+		SearchQuery = SearchQuery;
+		Page = Page;
+
+        _paginatedList = await _service.GetMealFilterPaged(CategoryId, SearchQuery, Page);
+        products = _paginatedList.Items;
+
+		if (withCategories)
+		{
+			categories = await _service.GetAllCategories();
+		}
+	}
+
+	public async void PageIndexChanged(int newPageNumber)
+	{
+		if (newPageNumber < 1 || newPageNumber > _paginatedList.TotalPages)
+		{
+			return;
+		}
+		Page = newPageNumber;
+		await GetAllProducts();
+		StateHasChanged();
+	}
+
+    public async Task OrderModal(string modalId, int itemId)
+    {
+        MealModel = await _service.GetMeal(itemId);
+        MealId = itemId;
+        await _jsRuntime.InvokeVoidAsync("global.openModal", modalId);
+    }
+
+    public async Task AddToCart(string modalId)
+    {
+        ShoppingCart shoppingCart = new()
+            {
+                Count = Details.Count,
+                MealId = MealId
+            };
+
+        await _cartService.IncrementCart(shoppingCart);
+        await _jsRuntime.InvokeAsync<object>("global.closeModal", modalId);
+    }
+
+    public async Task CloseModal(string modalId)
+    {
+        await _jsRuntime.InvokeAsync<object>("global.closeModal", modalId);
+    }
+
+}

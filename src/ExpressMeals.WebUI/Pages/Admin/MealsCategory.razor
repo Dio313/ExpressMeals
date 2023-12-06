@@ -1,0 +1,33 @@
+﻿
+<table class="table">
+    <thead class="thead-light">
+    <tr>
+        <th>Image</th>
+        <th>Name</th>
+        <th>Price</th>
+    </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in meals)
+    {
+        <tr>
+            <td>
+                <img src="@item.ImageUrl" width="120" height="120" />
+            </td>
+            <td>
+                @item.Name
+            </td>
+            <td>
+                @item.Price.ToString("C")
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+
+@code {
+
+    [Parameter] public List<MealVm> meals{ get; set; } = null!;
+
+}

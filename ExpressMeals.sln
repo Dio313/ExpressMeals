@@ -5,15 +5,15 @@ VisualStudioVersion = 17.8.34309.116
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{FC0A2373-E288-4C00-84DB-13EF244C83F8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpressMeals.Contracts", "src\ExpressMeals.Contracts\ExpressMeals.Contracts.csproj", "{B1D1549A-869E-40AC-B7CE-D4647A9A8CFC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExpressMeals.Contracts", "src\ExpressMeals.Contracts\ExpressMeals.Contracts.csproj", "{B1D1549A-869E-40AC-B7CE-D4647A9A8CFC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpressMeals.Domains", "src\ExpressMeals.Domains\ExpressMeals.Domains.csproj", "{FC10806A-8BD9-4A87-AA8C-C201D2636436}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExpressMeals.Domains", "src\ExpressMeals.Domains\ExpressMeals.Domains.csproj", "{FC10806A-8BD9-4A87-AA8C-C201D2636436}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpressMeals.Infrastructures", "src\ExpressMeals.Infrastructures\ExpressMeals.Infrastructures.csproj", "{C627EA69-80F1-4CE7-A3A4-3A1F605F8A30}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExpressMeals.Infrastructures", "src\ExpressMeals.Infrastructures\ExpressMeals.Infrastructures.csproj", "{C627EA69-80F1-4CE7-A3A4-3A1F605F8A30}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpressMeals.WebServer", "src\ExpressMeals.WebServer\ExpressMeals.WebServer.csproj", "{64FED351-6885-4632-A17F-4B2A937A1407}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExpressMeals.WebServer", "src\ExpressMeals.WebServer\ExpressMeals.WebServer.csproj", "{64FED351-6885-4632-A17F-4B2A937A1407}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpressMeals.WebUI", "src\ExpressMeals.WebUI\ExpressMeals.WebUI.csproj", "{4E917FA4-E701-433E-957C-DEBCCF19B82F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExpressMeals.WebUI", "src\ExpressMeals.WebUI\ExpressMeals.WebUI.csproj", "{4E917FA4-E701-433E-957C-DEBCCF19B82F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

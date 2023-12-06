@@ -1,0 +1,411 @@
+﻿@page "/admin/categories"
+@inject IApiService _service
+@inject IJSRuntime _jsRuntime
+
+<section class="inner-page-sec-padding-bottom space-db--30">
+    <div class="container">
+        
+        <h3>Admin Categories</h3>
+
+        <div class="row mb-2">
+            <div class="col-md-8">
+                <button class="btn btn-mid btn-secondary" type="button" @onclick='@(_ => AddModal("ModalA"))'>
+                    <span class="zmdi zmdi-plus"></span>&nbsp; Category
+                </button>
+            </div>
+            <div class="form-inline col-md-4 text-md-right"></div>
+        </div>
+        
+        
+   
+    <div class="col-sm-12 col-md-8 col-lg-8">
+        @if (category == null)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else
+        {
+            <div class="form-group">
+                <input class="form-control" type="text" placeholder="Filter Categories..."
+                       @bind="Filter"
+                       @bind:event="oninput">
+            </div>
+            <div class="cart-table table-striped table-responsive mb--40">
+                
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th class="pro-title">Name</th>
+                        <th class="pro-thumbnail">Icon</th>
+                        <th class="pro-remove">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var item in category.Where(x => IsVisible(x)))
+                    {
+                        <tr>
+                            <td class="pro-title">@item.Name</td>
+                            <td class="pro-thumbnail">
+                                <img src="@item.Icon" width="70" height="70" />
+                            </td>
+                            <td class="pro-remove">
+
+                                <button class="btn btn-rounded btn-warning btn-mid" type="button" @onclick='@(_ => EditModal("ModalB", item.Id))'>
+                                    <span class="zmdi zmdi-edit "></span> &nbsp;
+                                </button>
+                                |
+                                <button class="btn btn-rounded btn-danger btn-mid" type="button" @onclick='@(_ => OpenDeleteModal("deleteConfirmation", item.Id))'>
+                                    <span class="zmdi zmdi-delete"></span>&nbsp; 
+                                </button>
+                                |
+                                        <button class="btn btn-rounded btn-info btn-mid" type="button" @onclick='@(_ => MealModal("ModalD", item.Id))'>
+                                    <span class="zmdi zmdi-drink"></span>&nbsp; Meals
+                                </button>
+                            </td>
+
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+
+            </div>
+            
+        }
+
+    </div>
+    
+        
+    <div>
+            <div class="modal fade" id="ModalA" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Add Category</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            
+	                        @if (ShowErrors) {
+		                        <div class="alert alert-danger" role="alert">
+			                        <p>@Error</p>
+		                        </div>
+	                        }
+
+	                        <EditForm Model="CategoryModel" OnValidSubmit='_ => AddCategory("ModalA")'>
+                                
+                                <DataAnnotationsValidator />
+
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">Name</label>
+                                    <div class="col-sm-9">
+                                        <InputText @bind-Value="@CategoryModel.Name" class="form-control"/>
+                                        <ValidationMessage For="@(() => CategoryModel.Name)"/>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label">Icon</label>
+                                    <div class="col-sm-6">
+                                        <InputImage OnSelectedImage="IconSelected" ImageUrl="@imageURL" />
+                                        <ValidationMessage For="@(() =>CategoryModel.Icon)" />
+                                    </div>
+
+                                </div>
+
+
+                                <div class="form-group row">
+                                    <label class="col-sm-3 col-form-label"></label>
+                                    <div class="col-sm-9">
+                                        <button type="button" class="btn btn-mid btn-secondary" data-dismiss="modal">
+                                            <span class="zmdi zmdi-close"></span>&nbsp; Close
+                                        </button>
+                                        &nbsp;&nbsp;
+                                        <button type="submit" class="btn btn-mid btn-success ">
+                                            <span class="zmdi zmdi-mail-send"></span>&nbsp; Save
+                                        </button>
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        
+        <div>
+            <div class="modal fade" id="ModalB" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Edit <b>@CategoryModel.Name</b> </h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+	                    <div class="modal-body">
+                            
+                            
+		                    @if (ShowErrors) {
+			                    <div class="alert alert-danger" role="alert">
+				                    <p>@Error</p>
+			                    </div>
+		                    }
+
+		                    <EditForm Model="CategoryModel" OnValidSubmit='_ => EditCategory("ModalB")'>
+
+			                    <DataAnnotationsValidator/>
+
+			                    <div class="form-group row">
+				                    <label class="col-sm-3 col-form-label">Name</label>
+				                    <div class="col-sm-9">
+					                    <InputText @bind-Value="@CategoryModel.Name" class="form-control"/>
+					                    <ValidationMessage For="@(() => CategoryModel.Name)"/>
+
+				                    </div>
+			                    </div>
+
+			                    <div class="form-group row">
+				                    <label class="col-sm-3 col-form-label">Icon</label>
+				                    <div class="col-sm-6">
+					                    <InputImage OnSelectedImage="IconSelected" ImageUrl="@imageURL"/>
+					                    <ValidationMessage For="@(() => CategoryModel.Icon)"/>
+
+				                    </div>
+				                    @if (!String.IsNullOrEmpty(imageURL))
+				                    {
+					                    <img src="@CategoryModel.Icon" class="img-thumbnail"/>
+				                    }
+			                    </div>
+
+			                    <div class="form-group row">
+				                    <label class="col-sm-3 col-form-label"></label>
+				                    <div class="col-sm-9">
+					                    <button type="button" class="btn btn-mid btn-secondary" data-dismiss="modal">
+						                    <span class="zmdi zmdi-close"></span>&nbsp; Close
+					                    </button>
+					                    &nbsp;&nbsp;
+					                    <button type="submit" class="btn btn-mid btn-success ">
+						                    <span class="zmdi zmdi-mail-send"></span>&nbsp; Update
+					                    </button>
+				                    </div>
+			                    </div>
+		                    </EditForm>
+	                    </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        
+        <div class="modal fade" id="deleteConfirmation" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h6 class="modal-title">Are You Sure You Want To Delete <span class="text-danger">@CategoryModel.Name</span> ?</h6>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-mid btn-secondary" data-dismiss="modal">
+                            <span class="zmdi zmdi-close"></span>
+                        </button>
+                        &nbsp;&nbsp;
+                        <button type="button" class="btn btn-mid btn-success" @onclick='@(_ => ConfirmDelete("deleteConfirmation"))'>
+                            <span class="zmdi zmdi-mail-send"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        
+    <div>
+        <div class="modal fade" id="ModalD"  tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Meals By Category </h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                    
+                        @if (itemCategory == null)
+                        {
+                            <p><em>Loading...</em></p>
+                        }
+                        else
+                        {
+                            <dl class="row">
+                                <dt class="col-sm-2">
+                                    Category
+                                </dt>
+                                <dd class="col-sm-10">
+                                    @itemCategory.Name
+                                </dd>
+                            </dl>
+
+                            <MealsCategory meals="@itemCategory.Meals" />
+                        }
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    </div>
+</section>
+
+@code {
+
+    [Parameter] public int CategoryId { get; set; }
+
+    [Parameter] public int MealId { get; set; }
+
+    public string Filter { get; set; }
+
+    private bool ShowErrors;
+
+    private string Error = "";
+
+    string imageURL;
+
+    protected List<CategoryVm> category;
+
+    CategoryVm CategoryModel = new();
+    
+    public MealCategoryVm itemCategory { get; set; }
+
+    private void IconSelected(string imageBase64)
+    {
+        CategoryModel.Icon = imageBase64;
+        imageURL = null;
+        Console.WriteLine(imageBase64);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await _service.GetAllCategories();
+        category = response;
+    }
+
+    public bool IsVisible(CategoryVm item)
+    {
+        if (string.IsNullOrEmpty(Filter))
+            return true;
+ 
+        if (item.Name.Contains(Filter, StringComparison.OrdinalIgnoreCase))
+            return true;
+ 
+        if (item.Name.ToString().StartsWith(Filter) || item.Name.ToString().StartsWith(Filter))
+            return true;
+ 
+        return false;
+    }
+
+    public async Task AddModal(string modalId)
+    {
+        CategoryModel = new CategoryVm();
+        if (!string.IsNullOrEmpty(CategoryModel.Icon))
+        {
+            imageURL = CategoryModel.Icon;
+            CategoryModel.Icon = null;
+        }
+        await _jsRuntime.InvokeVoidAsync("global.openModal", modalId);
+    }
+
+    public async Task EditModal(string modalId, int itemId)
+    {
+        CategoryModel = await _service.GetCategory(itemId);
+        CategoryId = itemId;
+        if (!string.IsNullOrEmpty(CategoryModel.Icon))
+        {
+            imageURL = CategoryModel.Icon;
+            CategoryModel.Icon = null;
+        }
+        await _jsRuntime.InvokeVoidAsync("global.openModal", modalId);
+    }
+
+    public async Task AddCategory(string modalId)
+    {
+        ShowErrors = false;
+
+        var httpResponse = await _service.CreateCategory(CategoryModel);
+
+        if (httpResponse.IsSuccess)
+        {
+            await _jsRuntime.InvokeAsync<object>("global.closeModal", modalId);
+            await OnInitializedAsync();
+        }
+        else
+        {
+            foreach (var message in httpResponse.ErrorMessages)
+	        {
+		        ShowErrors = true;
+		        Error = message;
+	        }
+        }
+    }
+
+    public async Task EditCategory(string modalId)
+    {
+        ShowErrors = false;
+
+        var result = await _service.UpdateCategory(CategoryModel);
+        if (result.IsSuccess)
+        {
+            await _jsRuntime.InvokeAsync<object>("global.closeModal", modalId);
+            await OnInitializedAsync();
+        }
+        else
+        {
+	        foreach (var message in result.ErrorMessages)
+	        {
+		        ShowErrors = true;
+		        Error = message;
+	        }
+        }
+       
+    }
+
+
+    public async Task CloseModal(string modalId)
+    {
+        await _jsRuntime.InvokeAsync<object>("global.closeModal", modalId);
+    }
+
+    public async Task OpenDeleteModal(string modalId, int itemId)
+    {
+        CategoryModel = await _service.GetCategory(itemId);
+        CategoryId = itemId;
+        await _jsRuntime.InvokeVoidAsync("global.openModal", modalId);
+    }
+    public async Task ConfirmDelete(string modalId)
+    {
+        await _service.DeleteCategory(CategoryId);
+        await _jsRuntime.InvokeAsync<object>("global.closeModal", modalId);
+	    await OnInitializedAsync();
+    }
+
+    public async Task MealModal(string modalId, int itemId)
+    {
+       var response  = await _service.GetMealCategory(itemId);
+        itemCategory = response;
+	    MealId = itemId;
+        await _jsRuntime.InvokeVoidAsync("global.openModal", modalId);
+    }
+
+}
+
+
+

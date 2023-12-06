@@ -1,0 +1,57 @@
+﻿@inject NavigationManager NavigationManager
+@inject IApiService _service
+
+<div class="input-group">
+	<input @bind-value="searchQuery"
+	       @bind-value:event="oninput"
+	       type="search"
+	       list="products"
+	       @onkeyup="HandleSearch"
+	       placeholder="Search..."
+	       @ref="searchInput" />
+	<button class="btn btn-primary btn-lg " @onclick="SearchProducts">
+		Search
+	</button>
+		<datalist id="products">
+			@foreach (var suggestion in suggestions)
+			{
+				<option>@suggestion</option>
+			}
+		</datalist>
+		
+</div>
+
+
+
+@code {
+    private string searchQuery;
+    public int? categoryId { get; set; }
+	public int page { get; set; } = 1;
+    private List<string> suggestions = new();
+    protected ElementReference searchInput;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await searchInput.FocusAsync();
+        }
+    }
+
+    public void SearchProducts()
+    {
+        NavigationManager.NavigateTo($"/meals/search/{searchQuery}/page/1");
+    }
+
+    public async Task HandleSearch(KeyboardEventArgs args)
+    {
+	    if (args.Key == null || args.Key.Equals("Enter"))
+        {
+            SearchProducts();
+        }
+        else if (searchQuery.Length > 1 ||categoryId != null )
+        {
+            suggestions = await _service.GetSearchSuggestion(categoryId, searchQuery, page);
+        }
+    }
+}

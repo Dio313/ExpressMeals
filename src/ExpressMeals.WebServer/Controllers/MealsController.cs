@@ -1,7 +1,9 @@
-﻿using AutoMapper;
+﻿using System.Net;
+using AutoMapper;
 using ExpressMeals.Contracts.ViewModels;
 using ExpressMeals.Contracts.Wrappers;
 using ExpressMeals.Domains.Entities;
+using ExpressMeals.Domains.Exceptions;
 using ExpressMeals.Domains.helpers;
 using ExpressMeals.Infrastructures.Context;
 using Microsoft.AspNetCore.Mvc;
@@ -28,152 +30,148 @@ namespace ExpressMeals.WebServer.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<PaginatedList<MealVm>>> GetAllPagedAsync(int? categoryId, string searchQuery, int? page)
+        public async Task<PaginatedList<MealVm>> GetAllMealsPaged(int? categoryId, string searchQuery, int? page)
         {
-            try
+            var collections = _context.Meals.Select(s => s);
+
+            if (categoryId != null)
             {
-                var collections = _context.Meals.Select(s => s);
-
-                if (categoryId != null)
-                {
-                    collections = collections.Where(p => p.Category.Id == categoryId);
-                }
-
-                if (!string.IsNullOrEmpty(searchQuery))
-                {
-                    var queryString = searchQuery.Trim();
-                    collections = collections.Where(s => s.Category != null && s.Category.Name != null && s.Category != null && s.Name != null && (s.Name.Contains(queryString)
-                        || s.Category.Name.Contains(queryString)));
-                }
-
-                var meals = await collections.AsNoTracking()
-                    .OrderBy(o => o.Name)
-                    .Select(b => new MealVm()
-                    {
-                        Id = b.Id,
-                        Name = b.Name,
-                        Price = b.Price,
-                        ImageUrl = b.ImageUrl,
-                        Category = b.Category.Name
-
-                    }).ToListAsync();
-
-                return Ok(await PaginatedList<MealVm>.CreateAsync(meals, page ?? 1, MealsPerPage));
+                collections = collections.Where(p => p.Category.Id == categoryId);
             }
-            catch (Exception exception)
+
+            if (!string.IsNullOrEmpty(searchQuery))
             {
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    $"Error retrieving data from the database ---- {exception.InnerException!.Message}");
+                var queryString = searchQuery.Trim();
+                collections = collections.Where(s => s.Category != null && s.Category.Name != null && s.Category != null && s.Name != null && (s.Name.Contains(queryString)
+                    || s.Category.Name.Contains(queryString)));
             }
+            var meals = await collections.AsNoTracking()
+                .OrderBy(o => o.Name)
+                .Select(b => new MealVm()
+                {
+                    Id = b.Id,
+                    Name = b.Name,
+                    Price = b.Price,
+                    ImageUrl = b.ImageUrl,
+                    CategoryName = b.Category.Name
+
+                }).ToListAsync();
+
+
+            return await PaginatedList<MealVm>.CreateAsync(meals, page ?? 1, MealsPerPage);
             
+        }
+
+        [HttpGet("filterPages")]
+        public async Task<PaginatedList<MealVm>> GetAllFilterPagedAsync(int? categoryId, string searchQuery, int? page)
+        {
+            var collections = _context.Meals.Select(s => s);
+
+            if (categoryId != null)
+            {
+                collections = collections.Where(p => p.Category.Id == categoryId);
+            }
+
+            if (!string.IsNullOrEmpty(searchQuery))
+            {
+                var queryString = searchQuery.Trim();
+                collections = collections.Where(s => s.Category != null && s.Category.Name != null && s.Category != null && s.Name != null && (s.Name.Contains(queryString)
+                    || s.Category.Name.Contains(queryString)));
+            }
+
+            var meals = await collections.AsNoTracking()
+                .OrderBy(o => o.Name)
+                .Select(b => new MealVm()
+                {
+                    Id = b.Id,
+                    Name = b.Name,
+                    Price = b.Price,
+                    ImageUrl = b.ImageUrl,
+                    CategoryName = b.Category.Name
+
+                }).ToListAsync();
+
+
+            return await PaginatedList<MealVm>.CreateAsync(meals, page ?? 1, MealsPerPage);
         }
 
 
         [HttpGet("SearchSuggestion")]
-        public async Task<ActionResult<List<string>>> GetSearchSuggestionAsync(int? categoryId, string searchQuery, int? page)
+        public async Task<List<string>> GetSearchSuggestion(int? categoryId, string searchQuery, int? page)
         {
-            try
+            var meals = await GetAllFilterPagedAsync(categoryId, searchQuery, page);
+
+            List<string> result = new();
+
+            foreach (var item in meals.Items)
             {
-                var meals = await GetAllPagedAsync(categoryId, searchQuery, page);
+                if (item.Name != null) result.Add(item.Name);
 
-                List<string> result = new List<string>();
-
-                foreach (var item in meals.Value.Items)
+                if (item.CategoryName != null)
                 {
-                    if (item.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (item.Name != null) result.Add(item.Name);
-
-                        if (item.Category != null)
-                        {
-                            result.Add(item.Category);
-                        }
-                    }
-
-                    if (item.Description != null)
-                    {
-                        var punctuation = item.Description.Where(char.IsPunctuation)
-                            .Distinct().ToArray();
-                        var words = item.Description.Split()
-                            .Select(s => s.Trim(punctuation));
-
-                        foreach (var word in words)
-                        {
-                            if (word.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)
-                                && !result.Contains(word))
-                            {
-                                result.Add(word);
-                            }
-                        }
-                    }
+                    result.Add(item.CategoryName);
                 }
+            }
 
-                return Ok(result);
-            }
-            catch (Exception exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    $"Error retrieving data from the database ---- {exception.InnerException!.Message}");
-            }
+            return result;
         }
-
 
         [HttpGet("lists")]
-        public async Task<IActionResult> GetAllMeals()
+        public async Task<ApiResponse<List<MealVm>>> GetAllAsync()
         {
-            try
-            {
-                var products = await _context.Meals.Include(c => c.Category).AsNoTracking().ToListAsync();
-                return Ok( _mapper.Map<List<MealVm>>(products));
-            }
-            catch (Exception exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    $"Error retrieving data from the database ---- {exception.InnerException!.Message}");
-            }
+            var meals = await _context.Meals.Include(c => c.Category).AsNoTracking().ToListAsync();
+            var dto = _mapper.Map<List<MealVm>>(meals);
+            return new ApiResponse<List<MealVm>>(true, null, dto);
         }
 
+        [HttpGet("{id}")]
+        public async Task<ApiResponse<MealVm>> GetByIdAsync(int id)
+        {
+            var meal = await _context.Meals.Include(c => c.Category).AsNoTracking()
+                .SingleOrDefaultAsync(c => c.Id == id);
+            if (meal == null)
+            {
+                throw new NotFoundException("Meal not found", HttpStatusCode.NotFound);
+            }
+            var productDto = _mapper.Map<MealVm>(meal);
+            return new ApiResponse<MealVm>(true, null, productDto);
+        }
 
         [HttpPost]
-        public async Task<IActionResult> CreateMeal(MealVm model)
+        public async Task<ApiResponse<MealVm>> CreateAsync(MealVm model)
         {
             ArgumentNullException.ThrowIfNull(model);
 
-            try
+            if (_context.Meals != null && _context.Meals.Any(d => d.Name == model.Name))
             {
-                if (_context.Meals != null && _context.Meals.Any(d => d.Name == model.Name))
-                {
-                    return Conflict(new ApiResponse(false, new List<string>(){$"A Meal with the name: {model.Name} already exists, please choose another name" }));
-                }
+                throw new DuplicateException(
+                    $"A Meal with the name: {model.Name} already exists, please choose another name",
+                    HttpStatusCode.Conflict);
+            }
 
-                if (!string.IsNullOrWhiteSpace(model.ImageUrl))
-                {
-                    var image = Convert.FromBase64String(model.ImageUrl);
-                    model.ImageUrl = await _fileService.SaveFile(image, "jpg", "ProductImages");
-                }
-                var product = _mapper.Map<Meal>(model);
-                _context.Add(product);
-                await _context.SaveChangesAsync();
-                return Ok(product);
-            }
-            catch (Exception ex)
+            if (!string.IsNullOrWhiteSpace(model.ImageUrl))
             {
-                return BadRequest(new ApiResponse(false, new List<string> {ex.Message}));
+                var image = Convert.FromBase64String(model.ImageUrl);
+                model.ImageUrl = await _fileService.SaveFile(image, "jpg", "ProductImages");
             }
+            var product = _mapper.Map<Meal>(model);
+            _context.Add((object)product);
+            await _context.SaveChangesAsync();
+            return new ApiResponse<MealVm>(true, null, new MealVm());
         }
 
         [HttpPut]
-        public async Task<IActionResult> UpdateMeal(MealVm model)
+        public async Task<ApiResponse<MealVm>> UpdateAsync(MealVm model)
         {
             ArgumentNullException.ThrowIfNull(model);
 
-            try
+            if (_context.Meals != null)
             {
                 var productToUpdate = await _context.Meals.FindAsync(model.Id);
 
                 if (productToUpdate == null)
                 {
-                    return BadRequest("Meal Id not found");
+                    throw new NotFoundException("Meal Id not found", HttpStatusCode.NotFound);
                 }
 
                 _mapper.Map(model, productToUpdate);
@@ -186,30 +184,24 @@ namespace ExpressMeals.WebServer.Controllers
                 }
 
                 _context.Meals.Update(productToUpdate);
+            }
 
-                await _context.SaveChangesAsync();
-                return Ok(productToUpdate);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse(false, new List<string> {ex.Message}));
-            }
+            await _context.SaveChangesAsync();
+            return new ApiResponse<MealVm>(true, null, new MealVm());
         }
 
 
-
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteMeal(int id)
+        public async Task<ApiResponse<int>> DeleteAsync(int id)
         {
-            var product = await _context.Meals.FindAsync(id);
-
-            if (product == null)
+            if (_context.Meals != null)
             {
-                return BadRequest(new ApiResponse(false, new List<string>(){"Meal Id not found"}));
-            }
+                var product = await _context.Meals.FindAsync(id);
 
-            try
-            {
+                if (product == null)
+                {
+                    throw new NotFoundException("Meal Id not found", HttpStatusCode.NotFound);
+                }
                 var imageFileName = Path.GetFileName(product.ImageUrl);
 
                 if (!string.Equals(imageFileName, "default.png"))
@@ -219,15 +211,11 @@ namespace ExpressMeals.WebServer.Controllers
                 }
 
                 _context.Meals.Remove(product);
-
-                await _context.SaveChangesAsync();
-
-                return NoContent();
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse(false, new List<string> {ex.Message}));
-            }
+
+            await _context.SaveChangesAsync();
+
+            return new ApiResponse<int>(true, null, id);
         }
     }
 }

@@ -1,0 +1,98 @@
+﻿@page "/authentication/register"
+@inject IApiService _service
+@inject NavigationManager _navigationManager
+
+
+
+
+<div class="row justify-content-md-center">
+    <div class="col-md-5 mt-4 shadow p-3 mb-4 bg-white rounded">
+
+	    <h2 class="text-center">Register</h2>
+        
+	    @if (_showErrors) {
+		    <div class="alert alert-danger" role="alert">
+			    <p>@_error</p>
+		    </div>
+	    }
+
+	    <EditForm Model="_register" OnValidSubmit="ExecuteLogin" class="card card-body bg-light mt-5">
+
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            
+            <div class="form-group">
+	            <label for="fname">First Name</label>
+	            <InputText @bind-Value="_register.FirstName" id="fname" class="form-control form-control-sm" type="text" />
+	            <ValidationMessage For="@(() =>_register.FirstName)" />
+            </div>
+            
+            <div class="form-group">
+	            <label for="lname">Last Name</label>
+	            <InputText @bind-Value="_register.LastName" id="lname" class="form-control form-control-sm" type="text" />
+	            <ValidationMessage For="@(() =>_register.LastName)" />
+            </div>
+
+            <div class="form-group">
+                <label for="username">Username</label>
+                <InputText @bind-Value="_register.Email" id="username" class="form-control form-control-sm" type="text" />
+                <ValidationMessage For="@(() =>_register.Email)" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <InputText @bind-Value="_register.Password" id="password" class="form-control form-control-sm" type="password" />
+                <ValidationMessage For="@(() =>_register.Password)" />
+            </div>
+            
+            <div class="form-group">
+                <label for="confirmpassword">ConfirmPassword</label>
+                <InputText @bind-Value="_register.ConfirmPassword" id="confirmpassword" class="form-control form-control-sm" type="password" />
+                <ValidationMessage For="@(() =>_register.ConfirmPassword)" />
+            </div>
+
+            <hr />
+            <button type="submit" class="btn btn-block btn-success btn-mid btn-block mr-2">Sign Up</button>
+        </EditForm>
+        
+	    <hr />
+	    <div class="row">
+		    <div class="col">
+                <NavLink class="btn btn-block btn-mid mr-2 btn-info" href="authentication/login">login</NavLink>
+
+		    </div>
+		    <div class="col">
+                <NavLink class=" btn btn-block btn-mid mr-2 btn-warning" href="authentication/forgotpassword">Reset Password</NavLink>
+		    </div>
+	    </div>
+
+    </div>
+</div>
+
+@code {
+
+
+    private readonly RegisterVm _register = new();
+    private bool _showErrors;
+	private string _error = "";
+    
+
+    private async Task ExecuteLogin()
+    {
+        _showErrors = false;
+        var result = await _service.Register(_register);
+        if (result.IsSuccess)
+	    {
+		    _navigationManager.NavigateTo("/authentication/login");
+	    }
+	    else
+	    {
+		    foreach (var message in result.ErrorMessages)
+		    {
+			    _showErrors = true;
+			    _error = message;
+		    }
+	    }
+       
+    }
+}

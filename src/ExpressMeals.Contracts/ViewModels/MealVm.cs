@@ -20,6 +20,6 @@ public class MealVm
     [Required(ErrorMessage = "Category is required")]
     public int CategoryId { get; set; }
 
-    public string Category { get; set; }
+    public string CategoryName { get; set; }
 }
 

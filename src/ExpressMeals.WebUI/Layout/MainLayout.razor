@@ -1,16 +1,21 @@
 ﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+@inject IJSRuntime JsRuntime;
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
+<div class="site-wrapper" id="top">
+	<NavMenu></NavMenu>
+	<MobileNav></MobileNav>
+	@Body
 </div>
+<Footer></Footer>
+
+@functions {
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			await JsRuntime.InvokeAsync<object>("jQueryWidgets.initialize");
+			firstRender = false;
+		}
+	}
+}

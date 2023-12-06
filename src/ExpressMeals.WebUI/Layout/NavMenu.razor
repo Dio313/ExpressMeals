@@ -1,39 +1,228 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">ExpressMeals.WebUI</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+﻿@inject IApiService _service
+@inject ICartService _cartService
+@using global::Contracts.Constants
+@implements IDisposable
+@inject ISyncLocalStorageService _localStorage
+
+
+<div class="site-header header-2 mb--20 d-none d-lg-block">
+    <div class="header-middle pt--10 pb--10">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-3">
+                    <a href="index.html" class="site-brand">
+                        <img src="image/logo.png" alt="">
+                    </a>
+                </div>
+                <div class="col-lg-5">
+                    <div class="header-search-block">
+                        <Search></Search>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="main-navigation flex-lg-right">
+                        <div class="cart-widget">
+                            <div class="login-block">
+                                
+                                <AuthorizeView>
+                                    <NotAuthorized>
+                                        <NavLink class="font-weight-bold" href="authentication/login">Login </NavLink>
+                                        <br />
+                                        <NavLink href="authentication/register">Sign Up</NavLink>
+                                    </NotAuthorized>
+
+                                    <Authorized>
+                                        <ul class="header-top-list">
+                                            <li class="dropdown-trigger language-dropdown">
+	                                            <a href="">
+		                                            <i class="icons-left fas fa-user">
+		                                            </i>
+		                                            @if (context.User.Identity != null)
+		                                            {
+			                                           <span>Hi</span> @context.User.Identity.Name
+		                                            }
+	                                            </a>
+	                                            <i class="fas fa-chevron-down dropdown-arrow"></i>
+                                                <ul class="dropdown-box">
+                                                    <li>
+                                                        <a href="">My Account</a>
+                                                    </li>
+                                                    <li>
+                                                        <a href="">Order History</a>
+                                                    </li>
+                                                    <li>
+                                                        <a href="">Transactions</a>
+                                                    </li>
+                                                    <li>
+                                                        <NavLink href="authentication/logout">Log out</NavLink>
+                                                    </li>
+                                                </ul>
+                                            </li>
+
+                                        </ul>
+                                    </Authorized>
+
+                                </AuthorizeView>
+                               
+                            </div>
+                            <div class="cart-block">
+                                <div class="cart-total">
+                                    <NavLink href="/cart">
+                                        <span class="text-number">
+                                            @GetCartCount()
+                                        </span>
+                                        <span class="text-item">
+                                            Cart(s)
+                                        </span>
+                                    </NavLink>
+                                </div>
+                                
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="header-bottom bg-primary">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-3">
+                    <nav class="category-nav white-nav  ">
+                        @if (categories == null)
+                        {
+                            <p>Loading ....</p>
+                        }
+                        else
+                        {
+                            <div>
+                                <a href="javascript:void(0)" class="category-trigger">
+                                    <i class="fa fa-bars"></i>Meal categories</a>
+                                <ul class="category-menu">
+                                    @foreach (var item in categories)
+                                    {
+                                        <li class="cat-item">
+                                            <a href="/meals/category/@item.Name/@item.Id">
+                                                @item.Name
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                    </nav>
+                </div>
+                <div class="col-lg-3">
+                    <div class="header-phone color-white">
+                        <div class="icon">
+                            <i class="fas fa-headphones-alt"></i>
+                        </div>
+                        <div class="text">
+                            <p>Free Support 24/7</p>
+                            <p class="font-weight-bold number">+01-202-555-0181</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="main-navigation flex-lg-right">
+                        <ul class="main-menu menu-right main-menu--white li-last-0">
+                            <li class="menu-item">
+                                <NavLink href="/">Home</NavLink>
+                            </li>
+                            <li class="menu-item">
+                                <NavLink href="/meals/page/1">Meals</NavLink>
+                            </li>
+                            <AuthorizeView Roles="Admin">
+                                <Authorized>
+                                    <li class="menu-item has-children">
+                                        <a href="javascript:void(0)">
+                                            Admins <i class="fas fa-chevron-down dropdown-arrow"></i>
+                                        </a>
+                                        <ul class="sub-menu">
+                                            <li><NavLink href="admin/categories">Categories</NavLink></li>
+                                            <li><NavLink href="admin/meallists">Meals</NavLink></li>
+                                            <li><NavLink href="compare.html">Compare</NavLink></li>
+                                        </ul>
+                                    </li>
+                                </Authorized>
+                            </AuthorizeView>
+                            <li class="menu-item">
+                                <NavLink href="contact.html">Contact</NavLink>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
+<div class="sticky-init fixed-header common-sticky">
+    <div class="container d-none d-lg-block">
+        <div class="row align-items-center">
+            <div class="col-lg-4">
+                <a href="index.html" class="site-brand">
+                    <img src="image/logo.png" alt="">
+                </a>
+            </div>
+            <div class="col-lg-8">
+                <div class="main-navigation flex-lg-right">
+                    <ul class="main-menu menu-right ">
+                        <li class="menu-item">
+                            <NavLink href="/">Home</NavLink>
+                        </li>
+                        <li class="menu-item">
+                            <NavLink href="/meals/page/1">Meals</NavLink>
+                        </li>
+                        <AuthorizeView Roles="Admin">
+                            <Authorized>
+                                <li class="menu-item has-children">
+                                    <a href="javascript:void(0)">
+                                        Admins <i class="fas fa-chevron-down dropdown-arrow"></i>
+                                    </a>
+                                    <ul class="sub-menu">
+                                        <li><NavLink href="admin/categories">Categories</NavLink></li>
+                                        <li><NavLink href="admin/meallists">Meals</NavLink></li>
+                                        <li><NavLink href="compare.html">Compare</NavLink></li>
+                                    </ul>
+                                </li>
+                            </Authorized>
+                        </AuthorizeView>
+                        <li class="menu-item">
+                            <NavLink href="contact.html">Contact</NavLink>
+                        </li>
+                    </ul>
+                </div>
+            </div>
         </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-    </nav>
+    </div>
 </div>
 
+                                
 @code {
-    private bool collapseNavMenu = true;
 
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+	public List<CategoryVm> categories = new();
 
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
-    }
+	protected override async Task OnInitializedAsync()
+	{
+		categories = await _service.GetAllCategories();
+	}
+
+	protected override void OnInitialized()
+	{
+		_cartService.OnChange += StateHasChanged;
+	}
+
+	public void Dispose()
+	{
+		_cartService.OnChange -= StateHasChanged;
+	}
+
+	private int GetCartCount()
+	{
+		var cart = _localStorage.GetItem<List<ShoppingCart>>(Constant.ShoppingCart);
+		return cart == null ? 0 : cart.Count;
+	}
+
 }

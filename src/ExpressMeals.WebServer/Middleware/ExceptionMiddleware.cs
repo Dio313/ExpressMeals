@@ -1,41 +1,82 @@
 using System.Net;
-using System.Text.Json;
 using ExpressMeals.Contracts.Wrappers;
 using ExpressMeals.Domains.Exceptions;
+using Newtonsoft.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace ExpressMeals.WebServer.Middleware
 {
     public class ExceptionMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly ILogger<ExceptionMiddleware> _logger;
-        private readonly IWebHostEnvironment _env;
-        public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger, IWebHostEnvironment env)
+        
+        public ExceptionMiddleware(RequestDelegate next)
         {
-            _env = env;
-            _logger = logger;
             _next = next;
         }
 
-        public async Task InvokeAsync(HttpContext context)
+        public async Task Invoke(HttpContext context)
         {
+            string message = null;
+            var httpStatusCode = HttpStatusCode.InternalServerError;
+            var jsonSerializerSettings = new JsonSerializerSettings
+            {
+                ContractResolver = new CamelCasePropertyNamesContractResolver()
+            };
+
             try
             {
                 await _next(context);
             }
-            catch (Exception ex)
+
+            catch (BaseApiException exception)
             {
-                _logger.LogError(ex, ex.Message);
+
+                httpStatusCode = exception.HttpStatusCode;
+
+                // Generate message
+                message = exception.Message;
+
+                // Write to response
+                if (exception is BadRequestException)
+                {
+                    await WriteToResponseAsync(exception.AdditionalData);
+                }
+                else
+                {
+                    await WriteToResponseAsync();
+                }
+            }
+
+            catch (Exception exception)
+            {
+
+               await WriteToResponseAsync(exception);
+            }
+
+            // Local function
+            async Task WriteToResponseAsync(object data = null)
+            {
+                if (context.Response.HasStarted)
+                {
+                    throw new InvalidOperationException(
+                        "The response has already started, the http status code middleware will not be executed.");
+                }
+
+                string json;
+
+                if (data is not null)
+                {
+                    json = JsonConvert.SerializeObject(new ApiResponse<object>(false, new List<string> {message}, data),
+                        jsonSerializerSettings);
+                }
+                else
+                {
+                    json = JsonConvert.SerializeObject(new ApiResponse(false, new List<string> {message}), jsonSerializerSettings);
+                }
+
+                context.Response.StatusCode = (int)httpStatusCode;
                 context.Response.ContentType = "application/json";
-                context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-
-                var response = _env.IsDevelopment() ? new ApiException( ex.StackTrace!.ToString())
-                                : new ApiResponse(false, new List<string>());
-                
-                var options = new JsonSerializerOptions{PropertyNamingPolicy = JsonNamingPolicy.CamelCase};
-
-                var json = JsonSerializer.Serialize(response, options);
-
                 await context.Response.WriteAsync(json);
             }
         }

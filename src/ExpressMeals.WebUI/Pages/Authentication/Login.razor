@@ -1,0 +1,81 @@
+﻿@page "/authentication/login"
+@inject IApiService _service
+@inject NavigationManager _navigationManager
+
+
+<div class="row justify-content-md-center">
+    <div class="col-md-5 mt-4 shadow p-3 mb-4 bg-white rounded">
+       
+        <h2 class="text-center">Login</h2>
+        
+        @if (_showErrors) {
+            <div class="alert alert-danger" role="alert">
+                <p>@_error</p>
+            </div>
+        }
+
+        <EditForm Model="_loginModel" OnValidSubmit="ExecuteLogin" class="card card-body bg-light mt-5">
+            
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+           
+            <div class="form-group">
+                <label for="email">Email</label>
+                <InputText @bind-Value="_loginModel.Email" id="email" class="form-control form-control-sm" type="text" />
+                <ValidationMessage For="@(() =>_loginModel.Email)" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <InputText @bind-Value="_loginModel.Password" id="password" class="form-control form-control-sm" type="password" />
+                <ValidationMessage For="@(() =>_loginModel.Password)" />
+            </div>
+
+            <hr />
+            
+            <button type="submit" class="btn btn-block btn-success btn-mid btn-block mr-2">Login</button>
+        </EditForm>
+        <hr />
+        <div class="row">
+	        <div class="col">
+                <NavLink class="btn btn-block btn-mid mr-2 btn-info" href="authentication/register">Sign Up</NavLink>
+	        </div>
+	        <div class="col">
+                <NavLink class=" btn btn-block btn-mid mr-2 btn-warning" href="authentication/forgotpassword">Reset Password</NavLink>
+	        </div>
+        </div>
+
+    </div>
+</div>
+
+
+
+@code {
+
+    private readonly LoginVm _loginModel = new();
+    private bool _showErrors;
+    private string _error = "";
+
+
+
+    private async Task ExecuteLogin()
+    {
+        _showErrors = false;
+
+        var result = await _service.Login(_loginModel);
+
+        if (result.IsSuccess) {
+           _navigationManager.NavigateTo("/");
+        } else
+        {
+	        
+	        foreach (var message in result.ErrorMessages)
+	        {
+		       _showErrors = true;
+		        _error = message;
+	        }
+        }
+
+    }
+
+}

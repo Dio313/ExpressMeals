@@ -20,8 +20,12 @@
             <p>
                 <em>Loading...</em>
             </p>
-        }
-        else
+        }else if (products.Count == 0)
+        {
+            <p>
+                <h3>No Product Found...</h3>
+            </p>
+        }else
         {
             <div class="shop-product-wrap grid with-pagination row space-db--30 shop-border">
                 @foreach (var item in products)
